@@ -10,7 +10,7 @@ st.write(name)
 
 st.button("לחץ עליי")
 
-tab1, tab2, tab3 = st.tabs(["Log In", ["Home"], ["About"])
+tab1, tab2, tab3 = st.tabs(["Log In"], ["Home"], ["About"])
 
 with tab1:
   st.write("היי")
