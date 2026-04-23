@@ -1,3 +1,3 @@
 import streamlit as st
 
-st.write("האתר שלי")
+st.title("האתר שלי")
