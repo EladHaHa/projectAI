@@ -6,7 +6,7 @@ with tab1:
   username = st.text_input("Username")
   password = st.text_input("Password", type="password")
 
-  age = st.slider("Enter your age",0,0,100)
+  age = st.slider("Enter your age",100,0,100)
 
   if st.button("Log In"):
     if age<16:
