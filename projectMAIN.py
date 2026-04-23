@@ -7,7 +7,7 @@ with tab1:
   password = st.text_input("Password", type="password")
 
   age = st.slider("Enter your age",0,100)
-  test1, test2 = true
+  test1, test2 = true, true
   if st.button("Log In"):
     if username == "" or password == "":
       st.warning("PLease enter a username/password")
