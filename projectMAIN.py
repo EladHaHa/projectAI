@@ -6,11 +6,17 @@ with tab1:
   username = st.text_input("Username")
   password = st.text_input("Password", type="password")
 
+  age = st.slider("Enter your age",0,0,100)
+
   if st.button("Log In"):
-    st.success(f"{username} is logged in")
+    if age<16:
+      st.warning("Age must be over 16")
+    else:  
+      st.success(f"{username} is logged in")
   
 with tab2:
-  st.write("היי")
+  st.write(f"Welcome, {username}")
+
 with tab3:
   st.write("היי")
 
