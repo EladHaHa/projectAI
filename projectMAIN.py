@@ -12,10 +12,13 @@ with tab1:
   test1, test2 = True, True
   if st.button("Log In"):
     if username == "" or password == "":
-      st.error("PLease enter a username/password")
+      st.error("Please enter a username/password")
+      test1 = False
+    if len(password) < 2 or len(password) > 16:
+      st.warning("Password length must be between 2 and 16")
       test1 = False
     if age<16:
-      st.warning("Age must be over 16")
+      st.error("Age must be over 16")
       test2 = False
     elif test1 == True and test2 == True:  
       st.success(f"{username} is logged in")
