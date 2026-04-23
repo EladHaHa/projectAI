@@ -12,5 +12,5 @@ with tab3:
 with st.sidebar:
   st.title("תפריט")
   
-  option = st.selectbox(["Log In", "Home"])
+  option = st.selectbox("Select Page", ["Log In", "Home"])
 
