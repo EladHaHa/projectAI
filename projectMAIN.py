@@ -8,7 +8,7 @@ with tab1:
 
   if st.button("Log In"):
     st.success(f"{username} is logged in")
-  )
+  
 with tab2:
   st.write("היי")
 with tab3:
