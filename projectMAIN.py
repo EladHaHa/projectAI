@@ -7,13 +7,15 @@ with tab1:
   password = st.text_input("Password", type="password")
 
   age = st.slider("Enter your age",0,100)
-
+  test1, test2 = true
   if st.button("Log In"):
     if username == "" or password == "":
       st.warning("PLease enter a username/password")
-    elif age<16:
+      test1 = false
+    if age<16:
       st.warning("Age must be over 16")
-    else:  
+      test2 = false
+    elif test1 == true and test2 == true:  
       st.success(f"{username} is logged in")
   
 with tab2:
