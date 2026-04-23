@@ -12,7 +12,7 @@ with tab1:
   test1, test2 = True, True
   if st.button("Log In"):
     if username == "" or password == "":
-      st.warning("PLease enter a username/password")
+      st.error("PLease enter a username/password")
       test1 = False
     if age<16:
       st.warning("Age must be over 16")
