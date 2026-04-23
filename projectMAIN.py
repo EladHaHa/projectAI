@@ -24,7 +24,7 @@ with tab1:
       st.success(f"{username} is logged in")
   
 with tab2:
-  st.subheader(f"Welcome, {username}")
+  st.subheader(f"Welcome, {username}", anchor = False)
 
 
 
