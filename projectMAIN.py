@@ -9,6 +9,8 @@ with tab1:
   age = st.slider("Enter your age",0,100)
 
   if st.button("Log In"):
+    if username == "" || password == "":
+      st.warning("PLease enter a username/password")
     if age<16:
       st.warning("Age must be over 16")
     else:  
