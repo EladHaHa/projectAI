@@ -8,4 +8,6 @@ name = st.text_input("מה שמך")
 
 st.write(name)
 
+st.button()
+
 
