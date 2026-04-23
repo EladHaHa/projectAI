@@ -9,8 +9,5 @@ with tab2:
 with tab3:
   st.write("היי")
 
-with st.sidebar:
-  st.title("תפריט")
-  
-  option = st.radio("Select Page", ["Log In", "Home"])
+
 
