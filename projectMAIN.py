@@ -7,7 +7,7 @@ with tab1:
   password = st.text_input("Password", type="password")
 
   if(st.button("Log In"):
-    st.success(f"{username} is logged in"}
+    st.success(f"{username} is logged in")
   
 with tab2:
   st.write("היי")
