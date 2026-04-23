@@ -1,5 +1,5 @@
 import streamlit as st
 
-st.title("האתר שלי")
+st.title("AI Project")
 
-st.subheader("wow")
+st.subheader("description")
