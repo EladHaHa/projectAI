@@ -14,7 +14,7 @@ with tab1:
     if username == "" or password == "":
       st.error("Please enter a username/password")
       test1 = False
-    if len(password) < 2 or len(password) > 16:
+    if len(password) > 0 and (len(password) < 2 or len(password) > 16):
       st.warning("Password length must be between 2 and 16")
       test1 = False
     if age<16:
