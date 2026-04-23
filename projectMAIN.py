@@ -11,7 +11,7 @@ with tab1:
   if st.button("Log In"):
     if username == "" or password == "":
       st.warning("PLease enter a username/password")
-    if age<16:
+    else if age<16:
       st.warning("Age must be over 16")
     else:  
       st.success(f"{username} is logged in")
