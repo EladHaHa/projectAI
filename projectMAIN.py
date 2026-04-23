@@ -1,6 +1,6 @@
 import streamlit as st
 
-tab1, tab2, tab3 = st.tabs(["Log In", "Home", "About"])
+tab1, tab2 = st.tabs(["Log In", "Home"])
 
 with tab1:
   username = st.text_input("Username")
@@ -19,10 +19,8 @@ with tab1:
       st.success(f"{username} is logged in")
   
 with tab2:
-  st.write(f"Welcome, {username}")
+  st.subheader(f"Welcome, {username}")
 
-with tab3:
-  st.write("היי")
 
 
 
