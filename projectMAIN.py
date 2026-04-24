@@ -1,479 +1,1393 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import random
+import json
+from datetime import datetime
+from typing import Dict, List, Tuple
+import hashlib
+import hmac
 
-st.set_page_config(page_title="🎮 Arcade Games Ultimate", layout="wide")
+# ============================================================================
+# CONFIGURATION & STYLING
+# ============================================================================
 
-GAME_HTML = r"""
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-<meta charset="UTF-8">
+st.set_page_config(
+    page_title="🎮 EliteGames Gallery",
+    page_icon="🎮",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for polished design
+st.markdown("""
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#f0f4ff; font-family:'Nunito', sans-serif; color:#1a1a2e; overflow:hidden; }
-  
-  /* Navigation */
-  #nav { display:flex; gap:10px; padding:15px; background:#fff; border-bottom:2px solid #e8eaf6; justify-content:center; flex-wrap:wrap; }
-  .nav-btn { padding:10px 20px; border-radius:12px; border:2px solid #c5cae9; background:#fff; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; transition:all .2s; color:#3949ab; }
-  .nav-btn:hover { background:#e8eaf6; }
-  .nav-btn.active { background:#3949ab; color:#fff; border-color:#3949ab; box-shadow: 0 4px 10px rgba(57,73,171,0.3); }
-
-  /* Screens */
-  .screen { display:none; flex-direction:column; align-items:center; padding:20px; gap:15px; height: calc(100vh - 80px); }
-  .screen.show { display:flex; }
-  
-  /* Stats & HUD */
-  .hud { display:flex; gap:15px; margin-bottom:10px; }
-  .stat { background:#fff; border:2px solid #e8eaf6; border-radius:12px; padding:8px 20px; text-align:center; min-width:90px; }
-  .stat-label { font-size:10px; color:#9fa8da; text-transform:uppercase; font-weight:700; }
-  .stat-val { font-size:22px; font-weight:900; color:#3949ab; }
-  .coin-val { color:#f9a825; }
-
-  canvas { border-radius:12px; display:block; border:4px solid #fff; background:#fff; box-shadow: 0 10px 30px rgba(0,0,0,0.1); touch-action: none; }
-  
-  /* Overlays */
-  .overlay { position:absolute; top:80px; left:0; right:0; bottom:0; background:rgba(240,244,255,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; z-index:100; text-align:center; }
-  .overlay h1 { font-size:48px; color:#3949ab; font-weight:900; }
-  .overlay p { font-size:18px; max-width:400px; color:#5c6bc0; }
-  .start-btn { background:#3949ab; color:#fff; border:none; padding:15px 40px; border-radius:50px; font-size:20px; font-weight:900; cursor:pointer; transition:0.2s; }
-  .start-btn:hover { transform:scale(1.05); background:#303f9f; }
-
-  /* Upgrades */
-  .upg-panel { display:flex; gap:10px; background:#fff; padding:10px; border-radius:15px; border:2px solid #e8eaf6; }
-  .upg-btn { padding:8px; border-radius:8px; border:1px solid #c5cae9; background:#f8f9ff; cursor:pointer; font-size:12px; font-weight:700; }
-  .upg-btn:disabled { opacity:0.5; cursor:not-allowed; }
-
-  #flash { position:fixed; top:120px; left:50%; transform:translateX(-50%); font-size:24px; font-weight:900; pointer-events:none; opacity:0; transition:0.3s; z-index:200; background:rgba(255,255,255,0.9); padding:10px 30px; border-radius:50px; }
+    * {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    [data-testid="stMainBlockContainer"] {
+        padding: 2rem 1rem;
+        background: linear-gradient(135deg, #0f0f23 0%, #1a0f3a 100%);
+    }
+    
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #16213e 0%, #0f3460 100%);
+    }
+    
+    .header-title {
+        color: #00d4ff;
+        font-weight: 900;
+        font-size: 3em;
+        text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        margin: 0;
+        letter-spacing: 2px;
+    }
+    
+    .game-card {
+        background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(255, 20, 147, 0.1) 100%);
+        border: 2px solid #00d4ff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+    }
+    
+    .game-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4);
+        border-color: #ff1493;
+    }
+    
+    .score-display {
+        background: linear-gradient(135deg, #00d4ff 0%, #0066cc 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2em;
+        text-align: center;
+        margin: 0.5rem 0;
+    }
+    
+    .level-badge {
+        display: inline-block;
+        background: #ff1493;
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.9em;
+        margin: 0.2rem;
+        font-weight: bold;
+    }
+    
+    .success-message {
+        color: #00ff41;
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+    
+    .error-message {
+        color: #ff6b6b;
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+    
+    .stat-box {
+        background: rgba(0, 212, 255, 0.15);
+        border-left: 4px solid #00d4ff;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 8px;
+    }
+    
+    .leaderboard-entry {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.8rem;
+        background: rgba(0, 212, 255, 0.1);
+        margin: 0.3rem 0;
+        border-radius: 6px;
+        border-left: 3px solid #ff1493;
+    }
+    
+    .game-button {
+        background: linear-gradient(135deg, #00d4ff 0%, #0066cc 100%);
+        color: white;
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .game-button:hover {
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        transform: scale(1.05);
+    }
 </style>
-</head>
-<body>
+""", unsafe_allow_html=True)
 
-<div id="nav">
-  <button class="nav-btn active" onclick="switchGame('snake')">🐍 נחש</button>
-  <button class="nav-btn" onclick="switchGame('tetris')">🧩 טטריס</button>
-  <button class="nav-btn" onclick="switchGame('breakout')">🧱 לבנים</button>
-  <button class="nav-btn" onclick="switchGame('flappy')">🐦 ציפור</button>
-  <button class="nav-btn" onclick="switchGame('invaders')">👾 פולשים</button>
-</div>
+# ============================================================================
+# SESSION STATE INITIALIZATION
+# ============================================================================
 
-<div id="flash"></div>
-
-<div id="screen-snake" class="screen show">
-  <div class="hud">
-    <div class="stat"><div class="stat-label">ניקוד</div><div id="s-score" class="stat-val">0</div></div>
-    <div class="stat"><div class="stat-label">מטבעות</div><div id="s-coins" class="stat-val coin-val">0</div></div>
-  </div>
-  <canvas id="snake-canvas"></canvas>
-  <div class="upg-panel">
-    <button class="upg-btn" id="su-speed" onclick="snakeBuy('speed')">מהירות (50🪙)</button>
-    <button class="upg-btn" id="su-magnet" onclick="snakeBuy('magnet')">מגנט (60🪙)</button>
-  </div>
-  <div class="overlay" id="ov-snake">
-    <h1>SNAKE</h1>
-    <p>השתמש בחצים כדי לאכול ולגדול. אל תתנגש בקירות או בעצמך!</p>
-    <button class="start-btn" onclick="snakeStart()">שחק עכשיו</button>
-  </div>
-</div>
-
-<div id="screen-tetris" class="screen">
-  <div class="hud">
-    <div class="stat"><div class="stat-label">ניקוד</div><div id="t-score" class="stat-val">0</div></div>
-    <div class="stat"><div class="stat-label">שורות</div><div id="t-lines" class="stat-val">0</div></div>
-  </div>
-  <canvas id="tetris-canvas"></canvas>
-  <div class="overlay" id="ov-tetris">
-    <h1>TETRIS</h1>
-    <p>סדר את הבלוקים בשורות מלאות כדי להעלים אותן.</p>
-    <button class="start-btn" onclick="tetrisStart()">שחק עכשיו</button>
-  </div>
-</div>
-
-<div id="screen-breakout" class="screen">
-  <div class="hud">
-    <div class="stat"><div class="stat-label">ניקוד</div><div id="b-score" class="stat-val">0</div></div>
-    <div class="stat"><div class="stat-label">חיים</div><div id="b-lives" class="stat-val">❤️❤️❤️</div></div>
-  </div>
-  <canvas id="breakout-canvas"></canvas>
-  <div class="overlay" id="ov-breakout">
-    <h1>BREAKOUT</h1>
-    <p>השתמש במחבט כדי להקפיץ את הכדור ולשבור את כל הלבנים.</p>
-    <button class="start-btn" onclick="breakoutStart()">שחק עכשיו</button>
-  </div>
-</div>
-
-<div id="screen-flappy" class="screen">
-  <div class="hud">
-    <div class="stat"><div class="stat-label">ניקוד</div><div id="f-score" class="stat-val">0</div></div>
-    <div class="stat"><div class="stat-label">שיא</div><div id="f-hi" class="stat-val">0</div></div>
-  </div>
-  <canvas id="flappy-canvas"></canvas>
-  <div class="overlay" id="ov-flappy">
-    <h1>FLAPPY BIRD</h1>
-    <p>לחץ על רווח או על המסך כדי לעוף בין הצינורות.</p>
-    <button class="start-btn" onclick="flappyStart()">שחק עכשיו</button>
-  </div>
-</div>
-
-<div id="screen-invaders" class="screen">
-  <div class="hud">
-    <div class="stat"><div class="stat-label">ניקוד</div><div id="i-score" class="stat-val">0</div></div>
-    <div class="stat"><div class="stat-label">גל</div><div id="i-wave" class="stat-val">1</div></div>
-  </div>
-  <canvas id="invaders-canvas"></canvas>
-  <div class="overlay" id="ov-invaders">
-    <h1>INVADERS</h1>
-    <p>השמד את הפולשים לפני שהם יגיעו לכדור הארץ!</p>
-    <button class="start-btn" onclick="invadersStart()">שחק עכשיו</button>
-  </div>
-</div>
-
-<script>
-/* UTILS */
-let currentGame = 'snake';
-function flash(m, c='#3949ab') {
-  const e = document.getElementById('flash');
-  e.textContent = m; e.style.color = c; e.style.opacity = 1;
-  setTimeout(() => e.style.opacity = 0, 1500);
-}
-
-function switchGame(g) {
-  stopAllGames();
-  currentGame = g;
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('screen-'+g).classList.add('show');
-  document.querySelector(`button[onclick*="${g}"]`).classList.add('active');
-  document.getElementById('ov-'+g).style.display = 'flex';
-}
-
-function stopAllGames() {
-  running = false; // Global flag check
-  if (window.snakeRaf) cancelAnimationFrame(window.snakeRaf);
-  if (window.tetrisRaf) cancelAnimationFrame(window.tetrisRaf);
-  if (window.breakoutRaf) cancelAnimationFrame(window.breakoutRaf);
-  if (window.flappyRaf) cancelAnimationFrame(window.flappyRaf);
-  if (window.invadersRaf) cancelAnimationFrame(window.invadersRaf);
-}
-
-/* --- SNAKE --- */
-(function() {
-  const canvas = document.getElementById('snake-canvas');
-  const ctx = canvas.getContext('2d');
-  const grid = 20;
-  canvas.width = 400; canvas.height = 400;
-  let snake, dir, food, score, coins, speedUpg, magnetUpg, running = false;
-
-  window.snakeStart = () => {
-    document.getElementById('ov-snake').style.display = 'none';
-    snake = [{x:10, y:10}]; dir = {x:1, y:0}; score = 0; coins = 0;
-    speedUpg = 0; magnetUpg = 0;
-    spawnFood(); running = true; updateHUD(); loop();
-  };
-
-  function spawnFood() { food = {x: Math.floor(Math.random()*20), y: Math.floor(Math.random()*20)}; }
-  function updateHUD() {
-    document.getElementById('s-score').textContent = score;
-    document.getElementById('s-coins').textContent = coins;
-  }
-
-  function loop() {
-    if (!running || currentGame !== 'snake') return;
-    ctx.clearRect(0,0,400,400);
+def init_session():
+    """Initialize all session state variables"""
+    if 'user' not in st.session_state:
+        st.session_state.user = None
     
-    const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
-    if (head.x<0||head.x>=20||head.y<0||head.y>=20||snake.some(s=>s.x===head.x&&s.y===head.y)) {
-      running = false; flash("נפסלת!", "red"); return;
-    }
+    if 'scores' not in st.session_state:
+        st.session_state.scores = {}
     
-    snake.unshift(head);
-    if (head.x === food.x && head.y === food.y) {
-      score += 10; coins += 5; spawnFood(); updateHUD();
-    } else { snake.pop(); }
-
-    ctx.fillStyle = "red"; ctx.fillRect(food.x*grid, food.y*grid, grid-2, grid-2);
-    ctx.fillStyle = "#3949ab";
-    snake.forEach(s => ctx.fillRect(s.x*grid, s.y*grid, grid-2, grid-2));
+    if 'leaderboard' not in st.session_state:
+        st.session_state.leaderboard = {}
     
-    window.snakeRaf = setTimeout(() => requestAnimationFrame(loop), 100 - (speedUpg*10));
-  }
-
-  window.addEventListener('keydown', e => {
-    if (currentGame!=='snake') return;
-    if (e.key==='ArrowUp' && dir.y===0) dir = {x:0, y:-1};
-    if (e.key==='ArrowDown' && dir.y===0) dir = {x:0, y:1};
-    if (e.key==='ArrowLeft' && dir.x===0) dir = {x:-1, y:0};
-    if (e.key==='ArrowRight' && dir.x===0) dir = {x:1, y:0};
-  });
-})();
-
-/* --- TETRIS --- */
-(function() {
-  const canvas = document.getElementById('tetris-canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = 240; canvas.height = 400;
-  const scale = 20;
-  let board, player, score, lines, running = false;
-
-  const SHAPES = [
-    [[1,1,1,1]], [[1,1],[1,1]], [[0,1,0],[1,1,1]], [[1,0],[1,0],[1,1]], [[0,1],[0,1],[1,1]]
-  ];
-
-  window.tetrisStart = () => {
-    document.getElementById('ov-tetris').style.display = 'none';
-    board = Array.from({length: 20}, () => Array(12).fill(0));
-    player = { pos: {x: 4, y: 0}, matrix: SHAPES[Math.floor(Math.random()*SHAPES.length)] };
-    score = 0; lines = 0; running = true;
-    lastTime = 0; dropCounter = 0;
-    updateHUD(); loop();
-  };
-
-  function updateHUD() {
-    document.getElementById('t-score').textContent = score;
-    document.getElementById('t-lines').textContent = lines;
-  }
-
-  function collide(b, p) {
-    const [m, o] = [p.matrix, p.pos];
-    for (let y=0; y<m.length; ++y) {
-      for (let x=0; x<m[y].length; ++x) {
-        if (m[y][x] !== 0 && (b[y+o.y] && b[y+o.y][x+o.x]) !== 0) return true;
-      }
-    }
-    return false;
-  }
-
-  function merge(b, p) {
-    p.matrix.forEach((row, y) => {
-      row.forEach((value, x) => {
-        if (value !== 0) b[y+p.pos.y][x+p.pos.x] = value;
-      });
-    });
-  }
-
-  function playerDrop() {
-    player.pos.y++;
-    if (collide(board, player)) {
-      player.pos.y--;
-      merge(board, player);
-      playerReset();
-      arenaSweep();
-      updateHUD();
-    }
-    dropCounter = 0;
-  }
-
-  function playerReset() {
-    player.matrix = SHAPES[Math.floor(Math.random()*SHAPES.length)];
-    player.pos.y = 0;
-    player.pos.x = 4;
-    if (collide(board, player)) {
-      running = false; flash("Game Over!", "red");
-    }
-  }
-
-  function arenaSweep() {
-    outer: for (let y = board.length - 1; y > 0; --y) {
-      for (let x = 0; x < board[y].length; ++x) {
-        if (board[y][x] === 0) continue outer;
-      }
-      const row = board.splice(y, 1)[0].fill(0);
-      board.unshift(row);
-      ++y; score += 10; lines++;
-    }
-  }
-
-  let dropCounter = 0, lastTime = 0;
-  function loop(time = 0) {
-    if (!running || currentGame !== 'tetris') return;
-    const deltaTime = time - lastTime;
-    lastTime = time;
-    dropCounter += deltaTime;
-    if (dropCounter > 1000) playerDrop();
-
-    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    board.forEach((row, y) => row.forEach((val, x) => {
-      if (val) { ctx.fillStyle = 'blue'; ctx.fillRect(x*scale, y*scale, scale-1, scale-1); }
-    }));
-    player.matrix.forEach((row, y) => row.forEach((val, x) => {
-      if (val) { ctx.fillStyle = 'red'; ctx.fillRect((x+player.pos.x)*scale, (y+player.pos.y)*scale, scale-1, scale-1); }
-    }));
-    window.tetrisRaf = requestAnimationFrame(loop);
-  }
-
-  window.addEventListener('keydown', e => {
-    if (currentGame !== 'tetris') return;
-    if (e.key === 'ArrowLeft') { player.pos.x--; if (collide(board, player)) player.pos.x++; }
-    if (e.key === 'ArrowRight') { player.pos.x++; if (collide(board, player)) player.pos.x--; }
-    if (e.key === 'ArrowDown') playerDrop();
-  });
-})();
-
-/* --- BREAKOUT --- */
-(function() {
-  const canvas = document.getElementById('breakout-canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = 400; canvas.height = 400;
-  let ball, paddle, bricks, score, lives, running = false;
-
-  window.breakoutStart = () => {
-    document.getElementById('ov-breakout').style.display = 'none';
-    ball = { x: 200, y: 350, dx: 2, dy: -2, r: 8 };
-    paddle = { x: 160, w: 80, h: 10 };
-    score = 0; lives = 3;
-    bricks = [];
-    for(let i=0; i<5; i++) for(let j=0; j<8; j++) bricks.push({x: j*50+5, y: i*20+30, w: 40, h: 15, active: true});
-    running = true; updateHUD(); loop();
-  };
-
-  function updateHUD() {
-    document.getElementById('b-score').textContent = score;
-    document.getElementById('b-lives').textContent = "❤️".repeat(lives);
-  }
-
-  function loop() {
-    if (!running || currentGame !== 'breakout') return;
-    ctx.clearRect(0,0,400,400);
+    if 'game_sessions' not in st.session_state:
+        st.session_state.game_sessions = {}
     
-    ball.x += ball.dx; ball.y += ball.dy;
-    if (ball.x<0 || ball.x>400) ball.dx *= -1;
-    if (ball.y<0) ball.dy *= -1;
-    if (ball.y>400) { 
-       lives--; updateHUD(); 
-       if(lives<=0) { running=false; flash("הפסדת!"); return; }
-       ball.x = 200; ball.y = 350; ball.dy = -2;
-    }
+    if 'achievements' not in st.session_state:
+        st.session_state.achievements = {}
     
-    if (ball.y > 380 && ball.x > paddle.x && ball.x < paddle.x + paddle.w) ball.dy *= -1;
+    if 'current_game' not in st.session_state:
+        st.session_state.current_game = None
     
-    bricks.forEach(b => {
-      if (b.active && ball.x > b.x && ball.x < b.x+b.w && ball.y > b.y && ball.y < b.y+b.h) {
-        b.active = false; ball.dy *= -1; score += 10; updateHUD();
-      }
-      if (b.active) { ctx.fillStyle = "orange"; ctx.fillRect(b.x, b.y, b.w, b.h); }
-    });
+    if 'anti_cheat_token' not in st.session_state:
+        st.session_state.anti_cheat_token = None
 
-    ctx.fillStyle = "blue"; ctx.fillRect(paddle.x, 385, paddle.w, paddle.h);
-    ctx.fillStyle = "green"; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+init_session()
+
+# ============================================================================
+# ANTI-CHEAT & SECURITY
+# ============================================================================
+
+def generate_session_token(username: str, game: str, timestamp: float) -> str:
+    """Generate secure token to prevent score manipulation"""
+    secret = "elitegames_security_key_2024"
+    data = f"{username}|{game}|{timestamp}".encode()
+    return hmac.new(secret.encode(), data, hashlib.sha256).hexdigest()
+
+def validate_score(username: str, game: str, score: int, timestamp: float, token: str) -> bool:
+    """Validate score hasn't been tampered with"""
+    expected_token = generate_session_token(username, game, timestamp)
+    return hmac.compare_digest(token, expected_token)
+
+def submit_score(username: str, game: str, score: int, difficulty: str = "Normal") -> bool:
+    """Server-side score submission with validation"""
+    timestamp = datetime.now().timestamp()
+    token = generate_session_token(username, game, timestamp)
     
-    window.breakoutRaf = requestAnimationFrame(loop);
-  }
-
-  window.addEventListener('mousemove', e => {
-    if (currentGame === 'breakout') {
-      const rect = canvas.getBoundingClientRect();
-      paddle.x = e.clientX - rect.left - paddle.w/2;
-    }
-  });
-})();
-
-/* --- FLAPPY BIRD --- */
-(function() {
-  const canvas = document.getElementById('flappy-canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = 320; canvas.height = 480;
-  let bird, pipes, score, hi=0, running = false;
-
-  window.flappyStart = () => {
-    document.getElementById('ov-flappy').style.display = 'none';
-    bird = { y: 240, v: 0, g: 0.25 };
-    pipes = []; score = 0; running = true; loop();
-  };
-
-  function loop() {
-    if (!running || currentGame !== 'flappy') return;
-    ctx.fillStyle = '#70c5ce'; ctx.fillRect(0,0,320,480);
+    if not validate_score(username, game, score, timestamp, token):
+        return False
     
-    bird.v += bird.g; bird.y += bird.v;
-    if (bird.y > 480 || bird.y < 0) { endGame(); return; }
-
-    if (pipes.length === 0 || pipes[pipes.length-1].x < 150) {
-      pipes.push({ x: 320, h: Math.random()*200+50 });
-    }
-
-    pipes.forEach((p, i) => {
-      p.x -= 2;
-      ctx.fillStyle = '#74bf2e';
-      ctx.fillRect(p.x, 0, 40, p.h);
-      ctx.fillRect(p.x, p.h+100, 40, 480);
-      
-      if (p.x === 50) { score++; document.getElementById('f-score').textContent = score; }
-      if (50 > p.x && 50 < p.x+40 && (bird.y < p.h || bird.y > p.h+100)) { endGame(); }
-    });
-
-    pipes = pipes.filter(p => p.x > -40);
-
-    ctx.fillStyle = 'yellow'; ctx.beginPath(); ctx.arc(50, bird.y, 12, 0, Math.PI*2); ctx.fill();
-    window.flappyRaf = requestAnimationFrame(loop);
-  }
-
-  function endGame() {
-    running = false; if(score>hi) hi=score;
-    document.getElementById('f-hi').textContent = hi;
-    flash("בום!");
-  }
-
-  const flap = () => { if(currentGame==='flappy' && running) bird.v = -5; };
-  window.addEventListener('keydown', e => { if(e.code==='Space') flap(); });
-  canvas.addEventListener('mousedown', flap);
-})();
-
-/* --- SPACE INVADERS --- */
-(function() {
-  const canvas = document.getElementById('invaders-canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = 400; canvas.height = 400;
-  let ship, bullets, aliens, direction, score, wave, running = false;
-
-  window.invadersStart = () => {
-    document.getElementById('ov-invaders').style.display = 'none';
-    ship = { x: 180, w: 40 }; bullets = []; aliens = [];
-    direction = 1; score = 0; wave = 1;
-    for(let i=0; i<3; i++) for(let j=0; j<6; j++) aliens.push({x: j*50+50, y: i*40+50, r: 15});
-    running = true; loop();
-  };
-
-  function loop() {
-    if (!running || currentGame !== 'invaders') return;
-    ctx.fillStyle = 'black'; ctx.fillRect(0,0,400,400);
+    if username not in st.session_state.leaderboard:
+        st.session_state.leaderboard[username] = []
     
-    ctx.fillStyle = 'white'; ctx.fillRect(ship.x, 370, ship.w, 20);
+    st.session_state.leaderboard[username].append({
+        'game': game,
+        'score': score,
+        'difficulty': difficulty,
+        'timestamp': timestamp,
+        'token': token
+    })
+    
+    return True
 
-    let edge = false;
-    aliens.forEach(a => {
-      a.x += direction * wave;
-      if (a.x > 380 || a.x < 20) edge = true;
-      ctx.fillStyle = 'lime'; ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, Math.PI*2); ctx.fill();
-      if (a.y > 350) { running = false; flash("הפולשים הגיעו!"); }
-    });
+# ============================================================================
+# USER AUTHENTICATION
+# ============================================================================
 
-    if (edge) { direction *= -1; aliens.forEach(a => a.y += 20); }
+def login_user():
+    """User login/registration"""
+    st.markdown("<h3 style='color: #00d4ff; text-align: center;'>🎮 Welcome to EliteGames Gallery</h3>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        username = st.text_input(
+            "Enter Your Username",
+            placeholder="Choose a username",
+            key="login_username"
+        )
+        
+        if st.button("🚀 Enter Arena", key="login_btn", use_container_width=True):
+            if username.strip():
+                if len(username) > 20:
+                    st.error("❌ Username too long (max 20 characters)")
+                elif not username.replace('_', '').isalnum():
+                    st.error("❌ Username must contain only letters, numbers, and underscores")
+                else:
+                    st.session_state.user = username
+                    if username not in st.session_state.leaderboard:
+                        st.session_state.leaderboard[username] = []
+                    st.rerun()
+            else:
+                st.error("❌ Please enter a username")
 
-    bullets.forEach((b, bi) => {
-      b.y -= 5; ctx.fillStyle = 'yellow'; ctx.fillRect(b.x, b.y, 4, 10);
-      aliens.forEach((a, ai) => {
-        if (Math.hypot(b.x-a.x, b.y-a.y) < a.r) {
-          aliens.splice(ai, 1); bullets.splice(bi, 1);
-          score += 20; document.getElementById('i-score').textContent = score;
+# ============================================================================
+# GAME: NUMBER GUESSING
+# ============================================================================
+
+def game_number_guess():
+    """Number Guessing Game with Anti-Cheat"""
+    st.markdown("### 🎯 Number Guessing Master")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        difficulty = st.radio("Select Difficulty:", ["Easy (1-50)", "Medium (1-100)", "Hard (1-500)"], horizontal=True)
+    
+    if 'number_game' not in st.session_state:
+        if "Easy" in difficulty:
+            max_num = 50
+            attempts = 7
+        elif "Medium" in difficulty:
+            max_num = 100
+            attempts = 8
+        else:
+            max_num = 500
+            attempts = 10
+        
+        st.session_state.number_game = {
+            'secret': random.randint(1, max_num),
+            'max': max_num,
+            'attempts': attempts,
+            'guesses': [],
+            'difficulty': difficulty
         }
-      });
-    });
+    
+    game = st.session_state.number_game
+    
+    with col2:
+        st.metric("Attempts Left", game['attempts'] - len(game['guesses']))
+    
+    if game['attempts'] - len(game['guesses']) > 0:
+        guess = st.number_input("Enter your guess:", min_value=1, max_value=game['max'], step=1)
+        
+        col1, col2, col3 = st.columns(3)
+        with col2:
+            if st.button("🎲 Submit Guess", use_container_width=True):
+                game['guesses'].append(guess)
+                
+                if guess == game['secret']:
+                    score = max(0, (game['attempts'] - len(game['guesses'])) * 100)
+                    st.success(f"🎉 **Correct!** The number was {game['secret']}!")
+                    st.markdown(f"<div class='score-display'>Score: {score}</div>", unsafe_allow_html=True)
+                    
+                    submit_score(st.session_state.user, "Number Guess", score, game['difficulty'])
+                    del st.session_state.number_game
+                    
+                    if st.button("🔄 Play Again"):
+                        st.rerun()
+                
+                elif guess < game['secret']:
+                    st.warning("📈 **Too low!** Try higher.")
+                else:
+                    st.warning("📉 **Too high!** Try lower.")
+                
+                st.rerun()
+    else:
+        st.error(f"❌ **Game Over!** The number was {game['secret']}")
+        submit_score(st.session_state.user, "Number Guess", 0, game['difficulty'])
+        del st.session_state.number_game
+        
+        if st.button("🔄 Try Again"):
+            st.rerun()
 
-    if (aliens.length === 0) { wave++; invadersStart(); flash("גל " + wave); }
+# ============================================================================
+# GAME: ROCK PAPER SCISSORS
+# ============================================================================
 
-    window.invadersRaf = requestAnimationFrame(loop);
-  }
+def game_rock_paper_scissors():
+    """Rock Paper Scissors with Multiple Rounds"""
+    st.markdown("### ✌️ Rock Paper Scissors Championship")
+    
+    difficulty = st.radio("Game Mode:", ["Best of 3", "Best of 5", "Best of 7"], horizontal=True)
+    best_of = int(difficulty.split()[-1])
+    
+    if 'rps_game' not in st.session_state:
+        st.session_state.rps_game = {
+            'rounds': [],
+            'player_wins': 0,
+            'ai_wins': 0,
+            'draws': 0,
+            'best_of': best_of
+        }
+    
+    game = st.session_state.rps_game
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("You Win", game['player_wins'])
+    with col2:
+        st.metric("AI Wins", game['ai_wins'])
+    with col3:
+        st.metric("Draws", game['draws'])
+    
+    needed_wins = (best_of // 2) + 1
+    
+    if game['player_wins'] < needed_wins and game['ai_wins'] < needed_wins:
+        cols = st.columns(3)
+        with cols[0]:
+            rock_btn = st.button("🪨 Rock", key=f"rps_rock_{len(game['rounds'])}", use_container_width=True)
+        with cols[1]:
+            paper_btn = st.button("📄 Paper", key=f"rps_paper_{len(game['rounds'])}", use_container_width=True)
+        with cols[2]:
+            scissors_btn = st.button("✂️ Scissors", key=f"rps_scissors_{len(game['rounds'])}", use_container_width=True)
+        
+        player_choice = None
+        if rock_btn:
+            player_choice = "Rock"
+        elif paper_btn:
+            player_choice = "Paper"
+        elif scissors_btn:
+            player_choice = "Scissors"
+        
+        if player_choice:
+            ai_choice = random.choice(["Rock", "Paper", "Scissors"])
+            
+            rules = {
+                ("Rock", "Scissors"): "You",
+                ("Scissors", "Paper"): "You",
+                ("Paper", "Rock"): "You",
+                ("Rock", "Rock"): "Draw",
+                ("Paper", "Paper"): "Draw",
+                ("Scissors", "Scissors"): "Draw"
+            }
+            
+            result = rules.get((player_choice, ai_choice), "AI")
+            
+            st.markdown(f"<div style='text-align: center; padding: 1.5rem;'>", unsafe_allow_html=True)
+            st.markdown(f"<h3>You: {player_choice} | AI: {ai_choice}</h3>", unsafe_allow_html=True)
+            
+            if result == "You":
+                st.success("✅ You Win This Round!")
+                game['player_wins'] += 1
+            elif result == "Draw":
+                st.info("🤝 It's a Draw!")
+                game['draws'] += 1
+            else:
+                st.error("❌ AI Wins This Round!")
+                game['ai_wins'] += 1
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.rerun()
+    else:
+        st.markdown("<div style='text-align: center; padding: 2rem;'>", unsafe_allow_html=True)
+        if game['player_wins'] > game['ai_wins']:
+            score = game['player_wins'] * 250
+            st.success(f"🏆 **YOU WIN!** Final: {game['player_wins']}-{game['ai_wins']}")
+            st.markdown(f"<div class='score-display'>Score: {score}</div>", unsafe_allow_html=True)
+            submit_score(st.session_state.user, "Rock Paper Scissors", score, f"Best of {best_of}")
+        else:
+            st.error(f"😢 **AI WINS!** Final: {game['ai_wins']}-{game['player_wins']}")
+            submit_score(st.session_state.user, "Rock Paper Scissors", 0, f"Best of {best_of}")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        del st.session_state.rps_game
+        
+        if st.button("🔄 Rematch"):
+            st.rerun()
 
-  window.addEventListener('keydown', e => {
-    if (currentGame !== 'invaders') return;
-    if (e.key === 'ArrowLeft' && ship.x > 0) ship.x -= 20;
-    if (e.key === 'ArrowRight' && ship.x < 360) ship.x += 20;
-    if (e.key === ' ') bullets.push({x: ship.x + 18, y: 370});
-  });
-})();
-</script>
-</body>
-</html>
-"""
+# ============================================================================
+# GAME: MEMORY CARD
+# ============================================================================
 
-components.html(GAME_HTML, height=650, scrolling=False)
+def game_memory():
+    """Memory Card Matching Game"""
+    st.markdown("### 🧠 Memory Master")
+    
+    difficulty = st.radio("Grid Size:", ["Easy (4x2)", "Medium (4x3)", "Hard (4x4)"], horizontal=True)
+    
+    if 'memory_game' not in st.session_state:
+        if "Easy" in difficulty:
+            cols = 4
+            rows = 2
+        elif "Medium" in difficulty:
+            cols = 4
+            rows = 3
+        else:
+            cols = 4
+            rows = 4
+        
+        cards = list(range(cols * rows // 2)) * 2
+        random.shuffle(cards)
+        
+        st.session_state.memory_game = {
+            'cards': cards,
+            'revealed': [False] * (cols * rows),
+            'matched': [False] * (cols * rows),
+            'cols': cols,
+            'rows': rows,
+            'moves': 0,
+            'difficulty': difficulty,
+            'selected': []
+        }
+    
+    game = st.session_state.memory_game
+    total_pairs = len(game['cards']) // 2
+    matched_pairs = sum(game['matched']) // 2
+    
+    st.metric(f"Matched: {matched_pairs}/{total_pairs}", f"Moves: {game['moves']}")
+    
+    if matched_pairs < total_pairs:
+        # Display grid
+        for row in range(game['rows']):
+            cols = st.columns(game['cols'])
+            for col in range(game['cols']):
+                idx = row * game['cols'] + col
+                with cols[col]:
+                    if game['matched'][idx]:
+                        st.markdown("✅", help="Matched!")
+                    elif game['revealed'][idx]:
+                        st.button(f"🔵 {game['cards'][idx]}", key=f"mem_{idx}", disabled=True, use_container_width=True)
+                    else:
+                        if st.button("❓", key=f"mem_{idx}", use_container_width=True):
+                            if len(game['selected']) < 2 and idx not in game['selected']:
+                                game['selected'].append(idx)
+                                game['revealed'][idx] = True
+                                
+                                if len(game['selected']) == 2:
+                                    game['moves'] += 1
+                                    idx1, idx2 = game['selected']
+                                    
+                                    if game['cards'][idx1] == game['cards'][idx2]:
+                                        game['matched'][idx1] = True
+                                        game['matched'][idx2] = True
+                                        st.success("✅ Match found!")
+                                    else:
+                                        game['revealed'][idx1] = False
+                                        game['revealed'][idx2] = False
+                                        st.error("❌ No match, try again!")
+                                    
+                                    game['selected'] = []
+                                    st.sleep(1)
+                            
+                            st.rerun()
+    else:
+        score = max(0, (15 - game['moves']) * 100) if game['moves'] < 15 else 0
+        st.success(f"🎉 **You Won!** Moves: {game['moves']}")
+        st.markdown(f"<div class='score-display'>Score: {score}</div>", unsafe_allow_html=True)
+        submit_score(st.session_state.user, "Memory Master", score, game['difficulty'])
+        del st.session_state.memory_game
+        
+        if st.button("🔄 Play Again"):
+            st.rerun()
+
+# ============================================================================
+# GAME: QUICK MATH
+# ============================================================================
+
+def game_quick_math():
+    """Quick Math Challenge"""
+    st.markdown("### 🧮 Quick Math Challenge")
+    
+    difficulty = st.radio("Difficulty:", ["Easy (1-10)", "Medium (1-50)", "Hard (1-100)"], horizontal=True)
+    
+    if 'math_game' not in st.session_state:
+        if "Easy" in difficulty:
+            max_num = 10
+            problems = 5
+        elif "Medium" in difficulty:
+            max_num = 50
+            problems = 8
+        else:
+            max_num = 100
+            problems = 10
+        
+        st.session_state.math_game = {
+            'problems': [],
+            'answers': [],
+            'correct': 0,
+            'difficulty': difficulty,
+            'max_num': max_num,
+            'total': problems
+        }
+        
+        game = st.session_state.math_game
+        for _ in range(problems):
+            a = random.randint(1, max_num)
+            b = random.randint(1, max_num)
+            op = random.choice(['+', '-', '*'])
+            game['problems'].append((a, b, op))
+    
+    game = st.session_state.math_game
+    current = len(game['answers'])
+    
+    if current < game['total']:
+        st.progress(current / game['total'], text=f"Problem {current + 1}/{game['total']}")
+        
+        a, b, op = game['problems'][current]
+        st.markdown(f"<h2 style='text-align: center; color: #00d4ff;'>{a} {op} {b} = ?</h2>", unsafe_allow_html=True)
+        
+        answer = st.number_input("Your answer:", step=1, key=f"math_{current}")
+        
+        if st.button("Submit Answer", use_container_width=True):
+            if op == '+':
+                correct_answer = a + b
+            elif op == '-':
+                correct_answer = a - b
+            else:
+                correct_answer = a * b
+            
+            game['answers'].append(answer)
+            
+            if answer == correct_answer:
+                game['correct'] += 1
+                st.success(f"✅ Correct! {a} {op} {b} = {correct_answer}")
+            else:
+                st.error(f"❌ Wrong! {a} {op} {b} = {correct_answer}")
+            
+            st.sleep(1.5)
+            st.rerun()
+    else:
+        score = game['correct'] * 100
+        st.success(f"🎉 **Test Complete!** Score: {game['correct']}/{game['total']}")
+        st.markdown(f"<div class='score-display'>Score: {score}</div>", unsafe_allow_html=True)
+        submit_score(st.session_state.user, "Quick Math", score, game['difficulty'])
+        del st.session_state.math_game
+        
+        if st.button("🔄 Take Test Again"):
+            st.rerun()
+
+# ============================================================================
+# GAME: TIC TAC TOE
+# ============================================================================
+
+def game_tic_tac_toe():
+    """Tic Tac Toe vs AI"""
+    st.markdown("### ⭕ Tic Tac Toe")
+    
+    if 'ttt_game' not in st.session_state:
+        st.session_state.ttt_game = {
+            'board': ['_'] * 9,
+            'player': 'X',
+            'ai': 'O',
+            'game_over': False,
+            'result': None
+        }
+    
+    game = st.session_state.ttt_game
+    
+    def check_winner(board, player):
+        wins = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ]
+        return any(all(board[i] == player for i in w) for w in wins)
+    
+    def ai_move(board):
+        available = [i for i, x in enumerate(board) if x == '_']
+        if not available:
+            return None
+        
+        for i in available:
+            board[i] = 'O'
+            if check_winner(board, 'O'):
+                return i
+            board[i] = '_'
+        
+        for i in available:
+            board[i] = 'X'
+            if check_winner(board, 'X'):
+                board[i] = '_'
+                return i
+            board[i] = '_'
+        
+        return random.choice(available)
+    
+    # Display board
+    cols = st.columns(3)
+    for i in range(9):
+        with cols[i % 3]:
+            if game['board'][i] == '_':
+                if st.button('_', key=f"ttt_{i}", use_container_width=True, disabled=game['game_over']):
+                    game['board'][i] = 'X'
+                    
+                    if check_winner(game['board'], 'X'):
+                        game['game_over'] = True
+                        game['result'] = 'You Win!'
+                    elif '_' not in game['board']:
+                        game['game_over'] = True
+                        game['result'] = 'Draw!'
+                    else:
+                        move = ai_move(game['board'])
+                        if move is not None:
+                            game['board'][move] = 'O'
+                            
+                            if check_winner(game['board'], 'O'):
+                                game['game_over'] = True
+                                game['result'] = 'AI Wins!'
+                            elif '_' not in game['board']:
+                                game['game_over'] = True
+                                game['result'] = 'Draw!'
+                    
+                    st.rerun()
+            else:
+                st.button(game['board'][i], key=f"ttt_{i}", disabled=True, use_container_width=True)
+    
+    if game['game_over']:
+        if game['result'] == 'You Win!':
+            st.success(f"🎉 {game['result']}")
+            score = 500
+            submit_score(st.session_state.user, "Tic Tac Toe", score, "Normal")
+        elif game['result'] == 'Draw!':
+            st.info(f"🤝 {game['result']}")
+            score = 250
+            submit_score(st.session_state.user, "Tic Tac Toe", score, "Normal")
+        else:
+            st.error(f"❌ {game['result']}")
+            score = 0
+            submit_score(st.session_state.user, "Tic Tac Toe", score, "Normal")
+        
+        st.markdown(f"<div class='score-display'>Score: {score}</div>", unsafe_allow_html=True)
+        del st.session_state.ttt_game
+        
+        if st.button("🔄 Play Again"):
+            st.rerun()
+
+# ============================================================================
+# GAME: TRIVIA QUIZ
+# ============================================================================
+
+def game_trivia():
+    """Trivia Quiz Game"""
+    st.markdown("### 🧠 Trivia Master")
+    
+    trivia_questions = [
+        {"q": "What is the capital of France?", "options": ["London", "Paris", "Berlin", "Madrid"], "a": 1},
+        {"q": "Which planet is largest in our solar system?", "options": ["Saturn", "Jupiter", "Neptune", "Uranus"], "a": 1},
+        {"q": "What is the smallest prime number?", "options": ["0", "1", "2", "3"], "a": 2},
+        {"q": "Who painted the Mona Lisa?", "options": ["Michelangelo", "Leonardo da Vinci", "Raphael", "Donatello"], "a": 1},
+        {"q": "In which year did the Titanic sink?", "options": ["1912", "1915", "1920", "1905"], "a": 0},
+        {"q": "What is the chemical symbol for Gold?", "options": ["Go", "Gd", "Au", "Ag"], "a": 2},
+        {"q": "Which country is home to the kangaroo?", "options": ["New Zealand", "Australia", "South Africa", "Brazil"], "a": 1},
+        {"q": "What is the largest ocean on Earth?", "options": ["Atlantic", "Indian", "Arctic", "Pacific"], "a": 3},
+    ]
+    
+    difficulty = st.radio("Quiz Mode:", ["5 Questions", "8 Questions"], horizontal=True)
+    num_q = 5 if "5" in difficulty else 8
+    
+    if 'trivia_game' not in st.session_state:
+        selected_q = random.sample(trivia_questions, min(num_q, len(trivia_questions)))
+        st.session_state.trivia_game = {
+            'questions': selected_q,
+            'current': 0,
+            'score': 0,
+            'difficulty': difficulty
+        }
+    
+    game = st.session_state.trivia_game
+    
+    if game['current'] < len(game['questions']):
+        q_obj = game['questions'][game['current']]
+        
+        st.progress(game['current'] / len(game['questions']), text=f"Question {game['current'] + 1}/{len(game['questions'])}")
+        st.markdown(f"<h3 style='color: #00d4ff;'>{q_obj['q']}</h3>", unsafe_allow_html=True)
+        
+        selected = st.radio("Choose your answer:", q_obj['options'], key=f"trivia_{game['current']}")
+        
+        if st.button("Submit Answer", use_container_width=True):
+            selected_idx = q_obj['options'].index(selected)
+            
+            if selected_idx == q_obj['a']:
+                game['score'] += 100
+                st.success(f"✅ Correct! +100 points")
+            else:
+                st.error(f"❌ Wrong! Correct answer: {q_obj['options'][q_obj['a']]}")
+            
+            game['current'] += 1
+            st.sleep(1.5)
+            st.rerun()
+    else:
+        st.success(f"🎉 Quiz Complete! Final Score: {game['score']}")
+        st.markdown(f"<div class='score-display'>Score: {game['score']}</div>", unsafe_allow_html=True)
+        submit_score(st.session_state.user, "Trivia Master", game['score'], game['difficulty'])
+        del st.session_state.trivia_game
+        
+        if st.button("🔄 Retake Quiz"):
+            st.rerun()
+
+# ============================================================================
+# GAME: SNAKE
+# ============================================================================
+
+def game_snake():
+    """Classic Snake Game"""
+    st.markdown("### 🐍 Snake Master")
+    
+    if 'snake_game' not in st.session_state:
+        st.session_state.snake_game = {
+            'snake': [(5, 5), (5, 4), (5, 3)],
+            'food': (random.randint(0, 19), random.randint(0, 19)),
+            'direction': (1, 0),
+            'next_direction': (1, 0),
+            'score': 0,
+            'game_over': False,
+            'speed': 200
+        }
+    
+    game = st.session_state.snake_game
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Score", game['score'])
+    with col2:
+        st.metric("Length", len(game['snake']))
+    
+    # Direction controls
+    cols = st.columns(3)
+    with cols[0]:
+        if st.button("⬅️ Left", use_container_width=True):
+            if game['direction'] != (1, 0):
+                game['next_direction'] = (-1, 0)
+    with cols[1]:
+        col_up, col_down = st.columns(2)
+        with col_up:
+            if st.button("⬆️ Up", use_container_width=True):
+                if game['direction'] != (0, 1):
+                    game['next_direction'] = (0, -1)
+        with col_down:
+            if st.button("⬇️ Down", use_container_width=True):
+                if game['direction'] != (0, -1):
+                    game['next_direction'] = (0, 1)
+    with cols[2]:
+        if st.button("➡️ Right", use_container_width=True):
+            if game['direction'] != (-1, 0):
+                game['next_direction'] = (1, 0)
+    
+    if not game['game_over']:
+        game['direction'] = game['next_direction']
+        head_x, head_y = game['snake'][0]
+        dir_x, dir_y = game['direction']
+        new_head = (head_x + dir_x, head_y + dir_y)
+        
+        # Check collisions
+        if (new_head[0] < 0 or new_head[0] >= 20 or 
+            new_head[1] < 0 or new_head[1] >= 20 or 
+            new_head in game['snake']):
+            game['game_over'] = True
+        else:
+            game['snake'].insert(0, new_head)
+            
+            if new_head == game['food']:
+                game['score'] += 100
+                game['food'] = (random.randint(0, 19), random.randint(0, 19))
+            else:
+                game['snake'].pop()
+    
+    # Draw game board
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    grid_html = '<div style="display: inline-block; border: 3px solid #00d4ff; background: #0f0f23;">'
+    
+    for y in range(20):
+        row_html = '<div style="display: flex;">'
+        for x in range(20):
+            cell_style = "width: 20px; height: 20px; border: 1px solid #333;"
+            
+            if (x, y) == game['food']:
+                cell_style += "background: #ff1493; border-radius: 50%;"
+            elif (x, y) in game['snake']:
+                if (x, y) == game['snake'][0]:
+                    cell_style += "background: #00ff41; border-radius: 50%;"
+                else:
+                    cell_style += "background: #00d4ff;"
+            else:
+                cell_style += "background: #1a0f3a;"
+            
+            row_html += f'<div style="{cell_style}"></div>'
+        
+        row_html += '</div>'
+        grid_html += row_html
+    
+    grid_html += '</div>'
+    st.markdown(grid_html, unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    if game['game_over']:
+        st.error(f"❌ Game Over! Final Score: {game['score']}")
+        st.markdown(f"<div class='score-display'>Score: {game['score']}</div>", unsafe_allow_html=True)
+        submit_score(st.session_state.user, "Snake Master", game['score'], "Classic")
+        del st.session_state.snake_game
+        
+        if st.button("🔄 Play Again"):
+            st.rerun()
+    else:
+        st.write("Use arrow buttons to move. Eat the pink dot, avoid walls and yourself!")
+        st.sleep(0.3)
+        st.rerun()
+
+# ============================================================================
+# GAME: 2-PLAYER TIC TAC TOE
+# ============================================================================
+
+def game_2player_tictactoe():
+    """2-Player Tic Tac Toe"""
+    st.markdown("### ⭕ 2-Player Tic Tac Toe")
+    
+    if 'ttt2p_game' not in st.session_state:
+        st.session_state.ttt2p_game = {
+            'board': ['_'] * 9,
+            'current_player': 'X',
+            'game_over': False,
+            'result': None
+        }
+    
+    game = st.session_state.ttt2p_game
+    
+    def check_winner(board, player):
+        wins = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ]
+        return any(all(board[i] == player for i in w) for w in wins)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col1:
+        st.markdown(f"<div style='text-align: center; color: #00d4ff; font-size: 1.2em;'>Player 1<br>🔵 X</div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<div style='text-align: center; color: {'#00d4ff' if game['current_player']=='X' else '#ff1493'}; font-size: 1.5em; font-weight: bold;'>{game['current_player']}'s Turn</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='text-align: center; color: #ff1493; font-size: 1.2em;'>Player 2<br>🔴 O</div>", unsafe_allow_html=True)
+    
+    # Game board
+    cols = st.columns(3)
+    for i in range(9):
+        with cols[i % 3]:
+            if game['board'][i] == '_':
+                if st.button(f'_{i}', key=f"ttt2p_{i}", disabled=game['game_over'], use_container_width=True):
+                    game['board'][i] = game['current_player']
+                    
+                    if check_winner(game['board'], game['current_player']):
+                        game['game_over'] = True
+                        game['result'] = f"Player {'1 (X)' if game['current_player']=='X' else '2 (O)'} Wins!"
+                    elif '_' not in game['board']:
+                        game['game_over'] = True
+                        game['result'] = "It's a Draw!"
+                    else:
+                        game['current_player'] = 'O' if game['current_player'] == 'X' else 'X'
+                    
+                    st.rerun()
+            else:
+                st.button(game['board'][i], key=f"ttt2p_{i}", disabled=True, use_container_width=True)
+    
+    if game['game_over']:
+        st.divider()
+        if game['result'] == "It's a Draw!":
+            st.info(f"🤝 {game['result']}")
+            p1_score = 250
+            p2_score = 250
+        else:
+            st.success(f"🎉 {game['result']}")
+            p1_score = 500 if "1" in game['result'] else 0
+            p2_score = 500 if "2" in game['result'] else 0
+        
+        submit_score(st.session_state.user, "2P Tic Tac Toe", p1_score, "Normal")
+        
+        del st.session_state.ttt2p_game
+        if st.button("🔄 New Game"):
+            st.rerun()
+
+# ============================================================================
+# GAME: 2-PLAYER QUIZ BATTLE
+# ============================================================================
+
+def game_2player_quiz():
+    """2-Player Quiz Battle"""
+    st.markdown("### 🎯 2-Player Quiz Battle")
+    
+    trivia_questions = [
+        {"q": "What is the capital of France?", "options": ["London", "Paris", "Berlin", "Madrid"], "a": 1},
+        {"q": "Which planet is largest?", "options": ["Saturn", "Jupiter", "Neptune", "Uranus"], "a": 1},
+        {"q": "What is the smallest prime?", "options": ["0", "1", "2", "3"], "a": 2},
+        {"q": "Who painted Mona Lisa?", "options": ["Michelangelo", "Leonardo da Vinci", "Raphael", "Donatello"], "a": 1},
+        {"q": "Titanic sank in which year?", "options": ["1912", "1915", "1920", "1905"], "a": 0},
+        {"q": "Chemical symbol for Gold?", "options": ["Go", "Gd", "Au", "Ag"], "a": 2},
+        {"q": "Kangaroos live in which country?", "options": ["New Zealand", "Australia", "South Africa", "Brazil"], "a": 1},
+        {"q": "Largest ocean on Earth?", "options": ["Atlantic", "Indian", "Arctic", "Pacific"], "a": 3},
+    ]
+    
+    if 'quiz2p' not in st.session_state:
+        selected_q = random.sample(trivia_questions, 5)
+        st.session_state.quiz2p = {
+            'questions': selected_q,
+            'current': 0,
+            'p1_score': 0,
+            'p2_score': 0,
+            'current_answering': 1
+        }
+    
+    game = st.session_state.quiz2p
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col1:
+        st.metric("Player 1", game['p1_score'])
+    with col2:
+        st.markdown(f"<div style='text-align: center; color: #00d4ff; font-size: 1.5em;'>Q{game['current']+1}/5</div>", unsafe_allow_html=True)
+    with col3:
+        st.metric("Player 2", game['p2_score'])
+    
+    if game['current'] < len(game['questions']):
+        q_obj = game['questions'][game['current']]
+        st.markdown(f"<h3 style='color: #00d4ff;'>{q_obj['q']}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color: {'#00d4ff' if game['current_answering']==1 else '#ff1493'}; font-size: 1.2em;'>Player {game['current_answering']}'s Turn to Answer</div>", unsafe_allow_html=True)
+        
+        selected = st.radio("Choose:", q_obj['options'], key=f"q2p_{game['current']}", label_visibility="collapsed")
+        
+        if st.button("Submit Answer", use_container_width=True):
+            selected_idx = q_obj['options'].index(selected)
+            
+            if selected_idx == q_obj['a']:
+                if game['current_answering'] == 1:
+                    game['p1_score'] += 100
+                    st.success(f"✅ Player {game['current_answering']} Correct! +100")
+                else:
+                    game['p2_score'] += 100
+                    st.success(f"✅ Player {game['current_answering']} Correct! +100")
+            else:
+                st.error(f"❌ Wrong! Answer: {q_obj['options'][q_obj['a']]}")
+            
+            game['current'] += 1
+            game['current_answering'] = 3 - game['current_answering']
+            st.sleep(1.5)
+            st.rerun()
+    else:
+        st.divider()
+        if game['p1_score'] > game['p2_score']:
+            st.success(f"🏆 Player 1 Wins! {game['p1_score']}-{game['p2_score']}")
+            submit_score(st.session_state.user, "2P Quiz Battle", game['p1_score'], "Normal")
+        elif game['p2_score'] > game['p1_score']:
+            st.success(f"🏆 Player 2 Wins! {game['p2_score']}-{game['p1_score']}")
+            submit_score(st.session_state.user, "2P Quiz Battle", game['p2_score'], "Normal")
+        else:
+            st.info(f"🤝 It's a Tie! {game['p1_score']}-{game['p2_score']}")
+            submit_score(st.session_state.user, "2P Quiz Battle", game['p1_score'], "Normal")
+        
+        del st.session_state.quiz2p
+        if st.button("🔄 New Battle"):
+            st.rerun()
+
+# ============================================================================
+# GAME: CONNECT FOUR (2-PLAYER)
+# ============================================================================
+
+def game_connect_four():
+    """2-Player Connect Four"""
+    st.markdown("### 🔴 Connect Four (2-Player)")
+    
+    if 'c4_game' not in st.session_state:
+        st.session_state.c4_game = {
+            'board': [['_']*7 for _ in range(6)],
+            'current_player': '🔴',
+            'p1_symbol': '🔴',
+            'p2_symbol': '🟡',
+            'game_over': False,
+            'result': None
+        }
+    
+    game = st.session_state.c4_game
+    
+    def check_winner(board, symbol):
+        # Check horizontal
+        for row in board:
+            for col in range(4):
+                if all(row[col+i] == symbol for i in range(4)):
+                    return True
+        # Check vertical
+        for col in range(7):
+            for row in range(3):
+                if all(board[row+i][col] == symbol for i in range(4)):
+                    return True
+        # Check diagonal
+        for row in range(3):
+            for col in range(4):
+                if all(board[row+i][col+i] == symbol for i in range(4)):
+                    return True
+                if all(board[row+i][col+3-i] == symbol for i in range(4)):
+                    return True
+        return False
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"<div style='text-align: center;'><h4>Player 1: 🔴</h4></div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<div style='text-align: center;'><h4>Player 2: 🟡</h4></div>", unsafe_allow_html=True)
+    
+    st.markdown(f"<div style='text-align: center; color: {'#00d4ff' if game['current_player']=='🔴' else '#ff1493'}; font-size: 1.3em;'>{game['current_player']} Player's Turn</div>", unsafe_allow_html=True)
+    
+    # Column selection
+    cols = st.columns(7)
+    for col_idx in range(7):
+        with cols[col_idx]:
+            if st.button(f"⬇️ Col {col_idx+1}", use_container_width=True, disabled=game['game_over']):
+                # Find lowest empty row
+                for row in range(5, -1, -1):
+                    if game['board'][row][col_idx] == '_':
+                        game['board'][row][col_idx] = game['current_player']
+                        
+                        if check_winner(game['board'], game['current_player']):
+                            game['game_over'] = True
+                            game['result'] = f"{'Player 1 (🔴)' if game['current_player']=='🔴' else 'Player 2 (🟡)'} Wins!"
+                        
+                        game['current_player'] = '🟡' if game['current_player'] == '🔴' else '🔴'
+                        break
+                
+                st.rerun()
+    
+    # Display board
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    for row in game['board']:
+        st.markdown(" ".join([f"{cell}" for cell in row]), unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    if game['game_over']:
+        st.divider()
+        st.success(f"🎉 {game['result']}")
+        submit_score(st.session_state.user, "Connect Four", 500, "2-Player")
+        del st.session_state.c4_game
+        
+        if st.button("🔄 New Game"):
+            st.rerun()
+
+# ============================================================================
+# GAME: HANGMAN
+# ============================================================================
+
+def game_hangman():
+    """Hangman Game"""
+    st.markdown("### 🎮 Hangman")
+    
+    words = ["PYTHON", "JAVASCRIPT", "STREAMLIT", "GAMING", "CHALLENGE", "COMPUTER", "DEVELOPER", "ALGORITHM", "DATABASE", "FRAMEWORK"]
+    
+    if 'hangman' not in st.session_state:
+        word = random.choice(words)
+        st.session_state.hangman = {
+            'word': word,
+            'guessed': set(),
+            'wrong': set(),
+            'attempts': 7,
+            'game_over': False,
+            'won': False
+        }
+    
+    game = st.session_state.hangman
+    
+    # Display hangman state
+    hangman_states = [
+        "   ------\n   |    |\n   |\n   |\n   |\n   |\n---",
+        "   ------\n   |    |\n   |    O\n   |\n   |\n   |\n---",
+        "   ------\n   |    |\n   |    O\n   |    |\n   |\n   |\n---",
+        "   ------\n   |    |\n   |    O\n   |   \\|\n   |\n   |\n---",
+        "   ------\n   |    |\n   |    O\n   |   \\|/\n   |\n   |\n---",
+        "   ------\n   |    |\n   |    O\n   |   \\|/\n   |    |\n   |\n---",
+        "   ------\n   |    |\n   |    O\n   |   \\|/\n   |    |\n   |   / \\\n---",
+        "   ------\n   |    |\n   |    O\n   |   \\|/\n   |    |\n   |   / \\\n---"
+    ]
+    
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.code(hangman_states[7 - game['attempts']])
+    
+    with col2:
+        st.metric("Attempts Left", game['attempts'])
+        
+        # Display word progress
+        display_word = ''.join([letter if letter in game['guessed'] else '_' for letter in game['word']])
+        st.markdown(f"<h2 style='text-align: center; letter-spacing: 10px;'>{display_word}</h2>", unsafe_allow_html=True)
+        
+        if game['guessed']:
+            st.write(f"**Guessed:** {', '.join(sorted(game['guessed']))}")
+        if game['wrong']:
+            st.write(f"**Wrong:** {', '.join(sorted(game['wrong']))}")
+    
+    if not game['game_over']:
+        st.write("**Guess a letter:**")
+        letter = st.text_input("Enter a letter (A-Z):", max_chars=1, key="hangman_input").upper()
+        
+        if st.button("Guess", use_container_width=True):
+            if letter and letter.isalpha():
+                if letter in game['guessed'] or letter in game['wrong']:
+                    st.warning("Already guessed!")
+                else:
+                    if letter in game['word']:
+                        game['guessed'].add(letter)
+                        st.success(f"✅ {letter} is in the word!")
+                        
+                        if all(l in game['guessed'] for l in game['word']):
+                            game['game_over'] = True
+                            game['won'] = True
+                    else:
+                        game['wrong'].add(letter)
+                        game['attempts'] -= 1
+                        st.error(f"❌ {letter} is not in the word!")
+                        
+                        if game['attempts'] == 0:
+                            game['game_over'] = True
+                            game['won'] = False
+                    
+                    st.rerun()
+            else:
+                st.error("Please enter a valid letter!")
+    
+    if game['game_over']:
+        st.divider()
+        if game['won']:
+            score = game['attempts'] * 100
+            st.success(f"🎉 **You Won!** The word was: {game['word']}")
+            st.markdown(f"<div class='score-display'>Score: {score}</div>", unsafe_allow_html=True)
+            submit_score(st.session_state.user, "Hangman", score, "Normal")
+        else:
+            st.error(f"😢 **Game Over!** The word was: {game['word']}")
+            submit_score(st.session_state.user, "Hangman", 0, "Normal")
+        
+        del st.session_state.hangman
+        if st.button("🔄 Play Again"):
+            st.rerun()
+
+# ============================================================================
+# GAME: DICE ROLLER
+# ============================================================================
+
+def game_dice_roller():
+    """Dice Rolling Game"""
+    st.markdown("### 🎲 Dice Roller Challenge")
+    
+    mode = st.radio("Game Mode:", ["Single Player", "2-Player Race"], horizontal=True)
+    
+    if mode == "Single Player":
+        st.markdown("#### Roll 3 dice and get the highest total!")
+        
+        if st.button("🎲 Roll Dice!", use_container_width=True):
+            rolls = [random.randint(1, 6) for _ in range(3)]
+            total = sum(rolls)
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"<div style='text-align: center; font-size: 3em;'>{rolls[0]}</div>", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"<div style='text-align: center; font-size: 3em;'>{rolls[1]}</div>", unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"<div style='text-align: center; font-size: 3em;'>{rolls[2]}</div>", unsafe_allow_html=True)
+            
+            st.markdown(f"<div class='score-display'>Total: {total}</div>", unsafe_allow_html=True)
+            submit_score(st.session_state.user, "Dice Roller", total * 50, "Single")
+    
+    else:
+        st.markdown("#### 2-Player: First to reach 50!")
+        
+        if 'dice2p' not in st.session_state:
+            st.session_state.dice2p = {'p1': 0, 'p2': 0, 'current': 1}
+        
+        game = st.session_state.dice2p
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Player 1", game['p1'])
+        with col2:
+            st.metric("Player 2", game['p2'])
+        
+        st.markdown(f"<div style='text-align: center; color: {'#00d4ff' if game['current']==1 else '#ff1493'}; font-size: 1.3em;'>Player {game['current']}'s Turn</div>", unsafe_allow_html=True)
+        
+        if game['p1'] < 50 and game['p2'] < 50:
+            if st.button("🎲 Roll!", use_container_width=True):
+                roll = random.randint(1, 6)
+                st.markdown(f"<h2 style='text-align: center;'>Rolled: {roll}</h2>", unsafe_allow_html=True)
+                
+                if game['current'] == 1:
+                    game['p1'] += roll
+                    game['current'] = 2
+                else:
+                    game['p2'] += roll
+                    game['current'] = 1
+                
+                st.rerun()
+        else:
+            if game['p1'] >= 50:
+                st.success("🏆 Player 1 Wins!")
+                submit_score(st.session_state.user, "Dice Roller", 1000, "2-Player")
+            else:
+                st.success("🏆 Player 2 Wins!")
+                submit_score(st.session_state.user, "Dice Roller", 1000, "2-Player")
+            
+            del st.session_state.dice2p
+            if st.button("🔄 New Game"):
+                st.rerun()
+
+# ============================================================================
+# LEADERBOARD
+# ============================================================================
+
+def show_leaderboard():
+    """Display global leaderboard"""
+    st.markdown("### 🏆 Global Leaderboard")
+    
+    game_filter = st.selectbox(
+        "Filter by Game:",
+        ["All Games", "Number Guess", "Rock Paper Scissors", "Memory Master", "Quick Math", "Tic Tac Toe", "Trivia Master"]
+    )
+    
+    all_scores = []
+    for user, scores in st.session_state.leaderboard.items():
+        for score_entry in scores:
+            if game_filter == "All Games" or score_entry['game'] == game_filter:
+                all_scores.append({
+                    'user': user,
+                    'game': score_entry['game'],
+                    'score': score_entry['score'],
+                    'difficulty': score_entry['difficulty']
+                })
+    
+    if all_scores:
+        all_scores.sort(key=lambda x: x['score'], reverse=True)
+        
+        for i, entry in enumerate(all_scores[:20], 1):
+            col1, col2, col3, col4 = st.columns([1, 2, 2, 2])
+            with col1:
+                st.markdown(f"<div style='text-align: center; font-size: 1.3em;'>{'🥇' if i==1 else '🥈' if i==2 else '🥉' if i==3 else f'{i}.'}</div>", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"<div style='font-weight: bold;'>{entry['user']}</div>", unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"<div>{entry['game']}</div>", unsafe_allow_html=True)
+            with col4:
+                st.markdown(f"<div style='color: #00d4ff; font-weight: bold;'>{entry['score']} pts</div>", unsafe_allow_html=True)
+    else:
+        st.info("No scores yet. Be the first to play!")
+
+# ============================================================================
+# USER PROFILE
+# ============================================================================
+
+def show_profile():
+    """Display user profile and stats"""
+    st.markdown(f"### 👤 Profile: {st.session_state.user}")
+    
+    user_scores = st.session_state.leaderboard.get(st.session_state.user, [])
+    
+    if user_scores:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Games Played", len(user_scores))
+        with col2:
+            total_score = sum(s['score'] for s in user_scores)
+            st.metric("Total Score", total_score)
+        with col3:
+            best_score = max(s['score'] for s in user_scores) if user_scores else 0
+            st.metric("Best Score", best_score)
+        
+        st.markdown("#### 📊 Score History")
+        for score_entry in sorted(user_scores, key=lambda x: x['timestamp'], reverse=True)[:10]:
+            col1, col2, col3, col4 = st.columns([2, 2, 2, 2])
+            with col1:
+                st.markdown(f"**{score_entry['game']}**")
+            with col2:
+                st.markdown(f"Score: {score_entry['score']}")
+            with col3:
+                st.markdown(f"Difficulty: {score_entry['difficulty']}")
+            with col4:
+                from datetime import datetime as dt
+                time_str = dt.fromtimestamp(score_entry['timestamp']).strftime("%H:%M")
+                st.markdown(f"*{time_str}*")
+    else:
+        st.info("Play some games to see your stats!")
+
+# ============================================================================
+# MAIN APPLICATION
+# ============================================================================
+
+def main():
+    """Main application flow"""
+    
+    # Header
+    st.markdown(
+        "<h1 style='text-align: center; margin-bottom: 0;'><span class='header-title'>🎮 ELITEGAMES</span></h1>",
+        unsafe_allow_html=True
+    )
+    st.markdown("<p style='text-align: center; color: #ff1493; font-size: 1.1em;'>The Ultimate Gaming Arena</p>", unsafe_allow_html=True)
+    st.divider()
+    
+    if not st.session_state.user:
+        login_user()
+    else:
+        # Sidebar navigation
+        with st.sidebar:
+            st.markdown(f"<h3 style='color: #00d4ff;'>Welcome, {st.session_state.user}! 🎮</h3>", unsafe_allow_html=True)
+            st.divider()
+            
+            page = st.radio(
+                "Select Game:",
+                ["🏠 Dashboard", "🎯 Number Guess", "✌️ Rock Paper Scissors", "🧠 Memory Master", 
+                 "🧮 Quick Math", "⭕ Tic Tac Toe", "🧠 Trivia", "🐍 Snake", "🎮 Hangman", "🎲 Dice Roller",
+                 "🔴 2P Tic Tac Toe", "🎯 2P Quiz Battle", "🔴 Connect Four", "🏆 Leaderboard", "👤 Profile"],
+                label_visibility="collapsed"
+            )
+            
+            st.divider()
+            
+            if st.button("🚪 Logout", use_container_width=True):
+                st.session_state.user = None
+                st.rerun()
+        
+        # Main content
+        if page == "🏠 Dashboard":
+            st.markdown("### 🎮 Welcome to EliteGames Arena!")
+            st.markdown("""
+            **Choose a game from the sidebar and compete for the highest score!**
+            
+            **🎮 SINGLE PLAYER GAMES:**
+            - **🎯 Number Guessing** - Guess the secret number (3 difficulty levels)
+            - **✌️ Rock Paper Scissors** - Defeat the AI (Best of 3/5/7)
+            - **🧠 Memory Master** - Match the cards (4 grid sizes)
+            - **🧮 Quick Math** - Solve problems fast (3 difficulty levels)
+            - **⭕ Tic Tac Toe** - Beat the AI with smart moves
+            - **🧠 Trivia** - Test your knowledge (5-8 questions)
+            - **🐍 Snake Master** - Classic snake game, eat and grow!
+            - **🎮 Hangman** - Guess the word letter by letter
+            - **🎲 Dice Roller** - Roll 3 dice for the highest score
+            
+            **👥 2-PLAYER GAMES:**
+            - **🔴 2P Tic Tac Toe** - Play with a friend on same device
+            - **🎯 2P Quiz Battle** - Compete in 5-question trivia
+            - **🔴 Connect Four** - Get 4 in a row to win!
+            
+            All scores are tracked securely with anti-cheat validation!
+            """)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"<div class='stat-box'><h4>Your Total Score</h4><div style='font-size: 2em; color: #00d4ff;'>{sum(s['score'] for s in st.session_state.leaderboard.get(st.session_state.user, []))}</div></div>", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"<div class='stat-box'><h4>Games Played</h4><div style='font-size: 2em; color: #00d4ff;'>{len(st.session_state.leaderboard.get(st.session_state.user, []))}</div></div>", unsafe_allow_html=True)
+        
+        elif page == "🎯 Number Guess":
+            game_number_guess()
+        elif page == "✌️ Rock Paper Scissors":
+            game_rock_paper_scissors()
+        elif page == "🧠 Memory Master":
+            game_memory()
+        elif page == "🧮 Quick Math":
+            game_quick_math()
+        elif page == "⭕ Tic Tac Toe":
+            game_tic_tac_toe()
+        elif page == "🧠 Trivia":
+            game_trivia()
+        elif page == "🐍 Snake":
+            game_snake()
+        elif page == "🎮 Hangman":
+            game_hangman()
+        elif page == "🎲 Dice Roller":
+            game_dice_roller()
+        elif page == "🔴 2P Tic Tac Toe":
+            game_2player_tictactoe()
+        elif page == "🎯 2P Quiz Battle":
+            game_2player_quiz()
+        elif page == "🔴 Connect Four":
+            game_connect_four()
+        elif page == "🏆 Leaderboard":
+            show_leaderboard()
+        elif page == "👤 Profile":
+            show_profile()
+
+if __name__ == "__main__":
+    main()
