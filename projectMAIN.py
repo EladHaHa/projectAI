@@ -1,27 +1,49 @@
 import streamlit as st
+import pandas as pd
+import numpy as np
 
-tab1, tab2 = st.tabs(["Log In", "Home"])
+def generate_dataset(n=2000, noise_ratio=0.05, random_state=42):
+    np.random.seed(random_state)
+    
+    half = n // 2
 
-with tab1:
-  username = st.text_input("Username")
-  password = st.text_input("Password", type="password")
-  age = st.slider("Enter your age",0,100)
-  gender = st.radio("Gender", ["Male", "Female", "Else"])
+    real = pd.DataFrame({
+        "signal_strength": np.random.normal(loc=75, scale=15, size=half),
+        "signal_duration": np.random.normal(loc=14, scale=5, size=half),
+        "time_to_peak": np.random.normal(loc=4, scale=2, size=half),
+        "hour": np.random.randint(0, 24, size=half),
+        "day_of_week": np.random.randint(1, 8, size=half),
+        "latitude": np.random.normal(loc=31.7, scale=0.8, size=half),
+        "longitude": np.random.normal(loc=34.9, scale=0.8, size=half),
+        "station_id": np.random.randint(1, 11, size=half),
+        "launch_to_israel": 1
+    })
 
-  
-  test1, test2 = True, True
-  if st.button("Log In"):
-    if username == "" or password == "":
-      st.error("Please enter a username/password")
-      test1 = False
-    if len(password) > 0 and (len(password) < 2 or len(password) > 16):
-      st.warning("Password length must be between 2 and 16")
-      test1 = False
-    if age<16:
-      st.error("Age must be over 16")
-      test2 = False
-    elif test1 == True and test2 == True:  
-      st.success(f"{username} is logged in")
-  
-with tab2:
-  st.subheader(f"Welcome, {username}", anchor = False)
+    false = pd.DataFrame({
+        "signal_strength": np.random.normal(loc=55, scale=20, size=half),
+        "signal_duration": np.random.normal(loc=10, scale=6, size=half),
+        "time_to_peak": np.random.normal(loc=6, scale=3, size=half),
+        "hour": np.random.randint(0, 24, size=half),
+        "day_of_week": np.random.randint(1, 8, size=half),
+        "latitude": np.random.normal(loc=32.2, scale=1.2, size=half),
+        "longitude": np.random.normal(loc=35.2, scale=1.2, size=half),
+        "station_id": np.random.randint(1, 11, size=half),
+        "launch_to_israel": 0
+    })
+
+    df = pd.concat([real, false]).sample(frac=1).reset_index(drop=True)
+
+    noise_size = int(n * noise_ratio)
+    noise_idx = np.random.choice(n, size=noise_size, replace=False)
+    df.loc[noise_idx, "launch_to_israel"] = 1 - df.loc[noise_idx, "launch_to_israel"]
+
+    df["signal_strength"] = df["signal_strength"].round(2)
+    df["signal_duration"] = df["signal_duration"].round(2)
+    df["time_to_peak"] = df["time_to_peak"].round(2)
+    df["latitude"] = df["latitude"].round(4)
+    df["longitude"] = df["longitude"].round(4)
+
+    return df
+
+df = generate_dataset()
+st.dataframe(df)
