@@ -62,7 +62,7 @@ gender = st.selectbox(
 
 race = st.selectbox(
     "Race",
-    ["A", "B", "C", "D", "E"]
+    ["Asian", "African", "European", "Middle-Eastern", "Latino"]
 )
 
 parents = st.selectbox(
@@ -139,9 +139,9 @@ elif prep == "Full":
 if st.button("Predict"):
 
     # Put your model/calculation here
-    output1 = model.predict([[input1,input2,input3,input4,input5]])[0,0]
-    output2 = model.predict([[input1,input2,input3,input4,input5]])[0,1]
-    output3 = model.predict([[input1,input2,input3,input4,input5]])[0,2]
+    output1 = round(model.predict([[input1,input2,input3,input4,input5]])[0,0])
+    output2 = round(model.predict([[input1,input2,input3,input4,input5]])[0,1])
+    output3 = round(model.predict([[input1,input2,input3,input4,input5]])[0,2])
 
     # =========================
     # 3 OUTPUTS
