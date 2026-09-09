@@ -1,42 +1,301 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 import kagglehub
+import pandas as pd
 import os
-path = kagglehub.dataset_download("rkiattisak/student-performance-in-mathematics")
-
-print(os.listdir(path))
-
-df = pd.read_csv(os.path.join(path, "exams.csv"))
-
-gender_mapping = {'male': 0, 'female': 1}
-df['gender'] = df['gender'].map(gender_mapping)
-
-ethnic_mapping = {'group A': 0, 'group B': 1, 'group C': 2, 'group D': 3, 'group E': 4}
-df['race/ethnicity'] = df['race/ethnicity'].map(ethnic_mapping)
-
-parents_mapping = {'some college': 0, 'high school': 1, "associate's degree": 2, 'some high school': 3, "bachelor's degree": 4, "master's degree": 5}
-df['parental level of education'] = df['parental level of education'].map(parents_mapping)
-
-lunch_mapping = {'standard': 0, 'free/reduced': 1}
-df['lunch'] = df['lunch'].map(lunch_mapping)
-
-test_mapping = {'none': 0, 'completed': 1}
-df['test preparation course'] = df['test preparation course'].map(test_mapping)
-
-
-
-original_processed_df = df.copy()
 
 from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error
 
-# X = המידע שניתן למודל
-X = df[["gender", "race/ethnicity","parental level of education" ,"lunch","test preparation course"]]
 
-# y = הערך שנרצה לחזות
-y = df[["math score","reading score", "writing score"]]
+# =========================================================
+# PAGE
+# =========================================================
 
-# חלוקה לנתוני אימון ובדיקה
+st.set_page_config(
+    page_title="Age at Death Predictor",
+    page_icon="🧬",
+    layout="centered"
+)
+
+st.title("🧬 Age at Death Predictor")
+st.write(
+    "Enter information about a person to estimate their age at death."
+)
+
+
+# =========================================================
+# DOWNLOAD DATASET
+# =========================================================
+
+@st.cache_data
+def load_data():
+
+    path = kagglehub.dataset_download(
+        "imoore/age-dataset"
+    )
+
+    # Find CSV files
+    csv_files = [
+        file for file in os.listdir(path)
+        if file.endswith(".csv")
+    ]
+
+    if len(csv_files) == 0:
+        raise FileNotFoundError(
+            "No CSV file was found in the downloaded dataset."
+        )
+
+    csv_path = os.path.join(path, csv_files[0])
+
+    df = pd.read_csv(csv_path)
+
+    return df
+
+
+# Load dataset
+try:
+
+    df = load_data()
+
+except Exception as e:
+
+    st.error("Could not load the Kaggle dataset.")
+    st.exception(e)
+    st.stop()
+
+
+# =========================================================
+# SHOW DATASET INFORMATION
+# =========================================================
+
+st.subheader("Dataset")
+
+st.write("Number of rows:", len(df))
+
+with st.expander("Show dataset columns"):
+    st.write(df.columns.tolist())
+
+with st.expander("Show first rows"):
+    st.dataframe(df.head())
+
+
+# =========================================================
+# FIND COLUMNS
+# =========================================================
+
+# Change these names if your dataset uses different names.
+
+birth_column = None
+death_column = None
+gender_column = None
+occupation_column = None
+country_column = None
+
+
+# Try to automatically find the columns
+
+for column in df.columns:
+
+    name = column.lower().strip()
+
+    if "birth" in name and "year" in name:
+        birth_column = column
+
+    if "death" in name and "year" in name:
+        death_column = column
+
+    if "gender" in name or "sex" in name:
+        gender_column = column
+
+    if "occupation" in name:
+        occupation_column = column
+
+    if "country" in name:
+        country_column = column
+
+
+# =========================================================
+# CHECK REQUIRED COLUMNS
+# =========================================================
+
+if birth_column is None or death_column is None:
+
+    st.error(
+        "I could not automatically find the Birth Year "
+        "and Death Year columns."
+    )
+
+    st.write("Available columns:")
+    st.write(df.columns.tolist())
+
+    st.stop()
+
+
+# =========================================================
+# CREATE AGE AT DEATH
+# =========================================================
+
+df[birth_column] = pd.to_numeric(
+    df[birth_column],
+    errors="coerce"
+)
+
+df[death_column] = pd.to_numeric(
+    df[death_column],
+    errors="coerce"
+)
+
+df["AgeAtDeath"] = (
+    df[death_column] - df[birth_column]
+)
+
+
+# =========================================================
+# CLEAN DATA
+# =========================================================
+
+# Remove impossible ages
+df = df[
+    (df["AgeAtDeath"] >= 0) &
+    (df["AgeAtDeath"] <= 120)
+]
+
+
+# =========================================================
+# SELECT FEATURES
+# =========================================================
+
+feature_columns = []
+
+numeric_features = []
+
+categorical_features = []
+
+
+# Birth year
+feature_columns.append(birth_column)
+numeric_features.append(birth_column)
+
+
+# Gender
+if gender_column is not None:
+
+    feature_columns.append(gender_column)
+    categorical_features.append(gender_column)
+
+
+# Occupation
+if occupation_column is not None:
+
+    feature_columns.append(occupation_column)
+    categorical_features.append(occupation_column)
+
+
+# Country
+if country_column is not None:
+
+    feature_columns.append(country_column)
+    categorical_features.append(country_column)
+
+
+# =========================================================
+# CLEAN SELECTED DATA
+# =========================================================
+
+model_df = df[
+    feature_columns + ["AgeAtDeath"]
+].copy()
+
+model_df = model_df.dropna()
+
+
+# =========================================================
+# INPUT DATA
+# =========================================================
+
+st.subheader("Person Information")
+
+
+# Birth year
+
+birth_year = st.number_input(
+    "Birth Year",
+    min_value=1000,
+    max_value=2026,
+    value=1950,
+    step=1
+)
+
+
+# Gender
+
+if gender_column is not None:
+
+    gender_options = sorted(
+        df[gender_column]
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
+
+    gender = st.selectbox(
+        "Gender",
+        gender_options
+    )
+
+
+# Occupation
+
+if occupation_column is not None:
+
+    occupation_options = sorted(
+        df[occupation_column]
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
+
+    occupation = st.selectbox(
+        "Occupation",
+        occupation_options
+    )
+
+
+# Country
+
+if country_column is not None:
+
+    country_options = sorted(
+        df[country_column]
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
+
+    country = st.selectbox(
+        "Country",
+        country_options
+    )
+
+
+# =========================================================
+# PREPARE MODEL
+# =========================================================
+
+X = model_df[feature_columns]
+
+y = model_df["AgeAtDeath"]
+
+
+# Train/test split
+
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
@@ -44,116 +303,172 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-from sklearn.linear_model import LinearRegression
 
-# יצירת המודל
-model = LinearRegression()
+# =========================================================
+# PREPROCESSING
+# =========================================================
 
-# אימון המודל
-model.fit(X_train, y_train)
+transformers = []
 
 
-st.title("Degree predict")
+if len(categorical_features) > 0:
 
-gender = st.selectbox(
-    "Gender",
-    ["male", "female"]
+    transformers.append(
+        (
+            "categorical",
+            OneHotEncoder(
+                handle_unknown="ignore"
+            ),
+            categorical_features
+        )
+    )
+
+
+if len(numeric_features) > 0:
+
+    transformers.append(
+        (
+            "numeric",
+            "passthrough",
+            numeric_features
+        )
+    )
+
+
+preprocessor = ColumnTransformer(
+    transformers=transformers
 )
 
-race = st.selectbox(
-    "Race",
-    ["Asian", "African", "European", "Middle-Eastern", "Latino"]
-)
 
-parents = st.selectbox(
-    "Parent's Education",
-    [
-        "high school",
-        "some high school",
-        "some college",
-        "associate's degree",
-        "bachelor's degree",
-        "master's degree"
+# =========================================================
+# LINEAR REGRESSION MODEL
+# =========================================================
+
+model = Pipeline(
+    steps=[
+        (
+            "preprocessor",
+            preprocessor
+        ),
+        (
+            "regressor",
+            LinearRegression()
+        )
     ]
 )
 
-lunch = st.selectbox(
-    "Lunch",
-    ["Free", "Reduced", "Complete"]
+
+# Train model
+
+model.fit(
+    X_train,
+    y_train
 )
 
-prep = st.selectbox(
-    "Preparation for test",
-    ["None", "Full"]
+
+# =========================================================
+# MODEL ACCURACY
+# =========================================================
+
+test_predictions = model.predict(X_test)
+
+mae = mean_absolute_error(
+    y_test,
+    test_predictions
 )
 
 
-# =========================
-# CONVERT INPUTS TO NUMBERS
-# =========================
+# =========================================================
+# PREDICTION
+# =========================================================
 
-if gender == "male":
-    input1 = 0
-elif gender == "female":
-    input1 = 1
+if st.button(
+    "🔮 Predict Age at Death",
+    type="primary"
+):
 
+    # Create input dictionary
 
-if race == "Asian":
-    input2 = 0
-elif race == "African":
-    input2 = 1
-elif race == "Latino":
-    input2 = 2
-elif race == "Middle-Eastern":
-    input2 = 3
-elif race == "European":
-    input2 = 4
+    person = {
+        birth_column: birth_year
+    }
 
 
-if parents == "high school":
-    input3 = 1
-elif parents == "some college":
-    input3 = 0
-elif parents == "associate's degree":
-    input3 = 2
-elif parents == "some high school":
-    input3 = 3
-elif parents == "bachelor's degree":
-    input3 = 4
-elif parents == "master's degree":
-    input3 = 5
+    if gender_column is not None:
+
+        person[gender_column] = gender
 
 
-if lunch == "Free" or lunch == "Reduced":
-    input4 = 1
-elif lunch == "Complete":
-    input4 = 0
+    if occupation_column is not None:
+
+        person[occupation_column] = occupation
 
 
-if prep == "None":
-    input5 = 0
-elif prep == "Full":
-    input5 = 1
+    if country_column is not None:
+
+        person[country_column] = country
 
 
-if st.button("Predict"):
+    # Convert to DataFrame
 
-    # Put your model/calculation here
-    output1 = round(model.predict([[input1,input2,input3,input4,input5]])[0,0])
-    output2 = round(model.predict([[input1,input2,input3,input4,input5]])[0,1])
-    output3 = round(model.predict([[input1,input2,input3,input4,input5]])[0,2])
+    input_data = pd.DataFrame(
+        [person]
+    )
 
-    # =========================
-    # 3 OUTPUTS
-    # =========================
 
-    st.subheader("Results")
+    # Make prediction
 
-    st.write("Math grade:")
-    st.write(output1)
+    prediction = model.predict(
+        input_data
+    )
 
-    st.write("Reading grade:")
-    st.write(output2)
 
-    st.write("Writing grade:")
-    st.write(output3)
+    predicted_age = round(
+        prediction[0],
+        1
+    )
+
+
+    # =====================================================
+    # OUTPUT
+    # =====================================================
+
+    st.success(
+        f"Estimated age at death: {predicted_age} years"
+    )
+
+
+    st.info(
+        f"Model Mean Absolute Error: {mae:.2f} years"
+    )
+
+
+    st.warning(
+        "This is a statistical estimate based on "
+        "historical data, not a medical prediction."
+    )
+
+
+# =========================================================
+# MODEL INFORMATION
+# =========================================================
+
+with st.expander("Model information"):
+
+    st.write(
+        "Algorithm: Linear Regression"
+    )
+
+    st.write(
+        "Target: Age at death"
+    )
+
+    st.write(
+        "Features used:"
+    )
+
+    for column in feature_columns:
+
+        st.write(
+            f"- {column}"
+        )
