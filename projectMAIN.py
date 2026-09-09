@@ -59,46 +59,138 @@ st.title("My Prediction App")
 # 5 INPUTS
 # =========================
 
-gender = st.input("Gender", value="male/female")
-race = st.input("Race", value="A/B/C/D/E")
-parents = st.input("Parent's Education", value="high school/some high shool/some college/associate's degree/bachelor's degree/master's degree")
-lunch = st.input("Lunch", value="Free/Reduced/Complete")
-prep = st.input("Preperation for test", value="None/Full")
+gender = st.selectbox(
+    "Gender",
+    ["male", "female"]
+)
+
+race = st.selectbox(
+    "Race",
+    ["A", "B", "C", "D", "E"]
+)
+
+parents = st.selectbox(
+    "Parent's Education",
+    [
+        "high school",
+        "some high school",
+        "some college",
+        "associate's degree",
+        "bachelor's degree",
+        "master's degree"
+    ]
+)
+
+lunch = st.selectbox(
+    "Lunch",
+    ["Free", "Reduced", "Complete"]
+)
+
+prep = st.selectbox(
+    "Preparation for test",
+    ["None", "Full"]
+)
+
+
+# =========================
+# CONVERT INPUTS TO NUMBERS
+# =========================
 
 if gender == "male":
     input1 = 0
-if gender == "female":
-   input1=1
-if race=='A':
-    input2=0
-if race=='B':
-    input2=1
-if race=='C':
-    input2=2
-if race=='D':
-    input2=3
-if race=='E':
-    input2=4
+elif gender == "female":
+    input1 = 1
+
+
+if race == "A":
+    input2 = 0
+elif race == "B":
+    input2 = 1
+elif race == "C":
+    input2 = 2
+elif race == "D":
+    input2 = 3
+elif race == "E":
+    input2 = 4
+
+
 if parents == "high school":
-    input3=1
-if parents == "some college":
-    input3=0
-if parents == "associate's degree":
-    input3=2
-if parents == "some high school":
-    input3=3
-if parents == "bachelor's degree":
-    input3=4
-if parents == "master's degree":
-    input3=5
-if lunch=="Free" or lunch=="Reduced":
-    input4=1
-if lunch=="Complete":
-    input4=0
-if prep=="None":
-    input5=0
-if prep=="Full":
-    input5=1
+    input3 = 1
+elif parents == "some college":
+    input3 = 0
+elif parents == "associate's degree":
+    input3 = 2
+elif parents == "some high school":
+    input3 = 3
+elif parents == "bachelor's degree":
+    input3 = 4
+elif parents == "master's degree":
+    input3 = 5
+
+
+if lunch == "Free" or lunch == "Reduced":
+    input4 = 1
+elif lunch == "Complete":
+    input4 = 0
+
+
+if prep == "None":
+    input5 = 0
+elif prep == "Full":
+    input5 = 1
+
+
+# =========================
+# SHOW NUMERIC VALUES
+# =========================
+
+st.write("Input 1:", input1)
+st.write("Input 2:", input2)
+st.write("Input 3:", input3)
+st.write("Input 4:", input4)
+st.write("Input 5:", input5)
+
+One important thing
+You can make this much shorter and cleaner using dictionaries:
+
+gender_map = {
+    "male": 0,
+    "female": 1
+}
+
+race_map = {
+    "A": 0,
+    "B": 1,
+    "C": 2,
+    "D": 3,
+    "E": 4
+}
+
+parents_map = {
+    "some college": 0,
+    "high school": 1,
+    "associate's degree": 2,
+    "some high school": 3,
+    "bachelor's degree": 4,
+    "master's degree": 5
+}
+
+lunch_map = {
+    "Free": 1,
+    "Reduced": 1,
+    "Complete": 0
+}
+
+prep_map = {
+    "None": 0,
+    "Full": 1
+}
+
+input1 = gender_map[gender]
+input2 = race_map[race]
+input3 = parents_map[parents]
+input4 = lunch_map[lunch]
+input5 = prep_map[prep]
 # =========================
 # BUTTON
 # =========================
