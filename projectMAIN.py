@@ -44,9 +44,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-print("Training samples:", len(X_train))
-print("Test samples:", len(X_test))
-
 from sklearn.linear_model import LinearRegression
 
 # יצירת המודל
@@ -56,4 +53,40 @@ model = LinearRegression()
 model.fit(X_train, y_train)
 
 
+st.title("My Prediction App")
 
+# =========================
+# 5 INPUTS
+# =========================
+
+input1 = st.number_input("Input 1", value=0.0)
+input2 = st.number_input("Input 2", value=0.0)
+input3 = st.number_input("Input 3", value=0.0)
+input4 = st.number_input("Input 4", value=0.0)
+input5 = st.number_input("Input 5", value=0.0)
+
+# =========================
+# BUTTON
+# =========================
+
+if st.button("Predict"):
+
+    # Put your model/calculation here
+    output1 = input1 + input2
+    output2 = input3 + input4
+    output3 = input5
+
+    # =========================
+    # 3 OUTPUTS
+    # =========================
+
+    st.subheader("Results")
+
+    st.write("Output 1:")
+    st.write(output1)
+
+    st.write("Output 2:")
+    st.write(output2)
+
+    st.write("Output 3:")
+    st.write(output3)
