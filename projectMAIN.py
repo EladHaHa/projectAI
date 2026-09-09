@@ -28,3 +28,22 @@ df['test preparation course'] = df['test preparation course'].map(test_mapping)
 
 original_processed_df = df.copy()
 
+from sklearn.model_selection import train_test_split
+
+# X = המידע שניתן למודל
+X = df[["gender", "race/ethnicity","parental level of education" ,"lunch","test preparation course"]]
+
+# y = הערך שנרצה לחזות
+y = df[["math score","reading score", "writing score"]]
+
+# חלוקה לנתוני אימון ובדיקה
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42
+)
+
+print("Training samples:", len(X_train))
+print("Test samples:", len(X_test))
+
