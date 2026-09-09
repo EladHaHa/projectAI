@@ -67,7 +67,7 @@ prep = st.input("Preperation for test", value="None/Full")
 
 if gender == "male":
     input1 = 0
-else if gender == "female":
+if gender == "female":
    input1=1
 if race=='A':
     input2=0
