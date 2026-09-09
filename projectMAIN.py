@@ -98,15 +98,15 @@ elif gender == "female":
     input1 = 1
 
 
-if race == "A":
+if race == "Asian":
     input2 = 0
-elif race == "B":
+elif race == "African":
     input2 = 1
-elif race == "C":
+elif race == "Latino":
     input2 = 2
-elif race == "D":
+elif race == "Middle-Eastern":
     input2 = 3
-elif race == "E":
+elif race == "European":
     input2 = 4
 
 
