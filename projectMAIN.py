@@ -47,3 +47,13 @@ X_train, X_test, y_train, y_test = train_test_split(
 print("Training samples:", len(X_train))
 print("Test samples:", len(X_test))
 
+from sklearn.linear_model import LinearRegression
+
+# יצירת המודל
+model = LinearRegression()
+
+# אימון המודל
+model.fit(X_train, y_train)
+
+
+
