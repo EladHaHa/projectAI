@@ -60,7 +60,7 @@ st.title("My Prediction App")
 # =========================
 
 gender = st.input("Gender", value="male/female")
-race = st.input("Race", value="A/B/C/D/E)
+race = st.input("Race", value="A/B/C/D/E")
 parents = st.input("Parent's Education", value="high school/some high shool/some college/associate's degree/bachelor's degree/master's degree")
 lunch = st.input("Lunch", value="Free/Reduced/Complete")
 prep = st.input("Preperation for test", value="None/Full")
